@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mou — прототип</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --accent:#ef6316; --bg:#fbf7f0; --surface:#fff; --fg:#1c1a17; --muted:#6d6459; --line:#e7ddcd;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#17140f;--surface:#211d16;--fg:#f1ebe0;--muted:#a79d8d;--line:#352f25;--accent:#ff7d33;
+}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--font);color:var(--fg);background:var(--bg);overflow:hidden}
+#map{position:absolute;inset:0;background:var(--bg)}
+
+/* верхняя панель */
+#top{position:absolute;z-index:1000;top:0;left:0;right:0;display:flex;gap:.5rem;align-items:center;
+  padding:calc(.6rem + env(safe-area-inset-top,0px)) .8rem .6rem;pointer-events:none}
+#brand{pointer-events:auto;font-weight:700;font-size:1.15rem;letter-spacing:-.02em;color:#fff;
+  background:var(--accent);padding:.35rem .7rem;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+#search{pointer-events:auto;flex:1;max-width:360px;border:1px solid var(--line);background:var(--surface);color:var(--fg);
+  border-radius:10px;padding:.55rem .8rem;font-size:.95rem;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+#search:focus{outline:2px solid var(--accent);outline-offset:0}
+
+/* фильтр линий */
+#lines{position:absolute;z-index:1000;left:.8rem;bottom:calc(.8rem + env(safe-area-inset-bottom,0px));
+  display:flex;flex-wrap:wrap;gap:.35rem;max-width:min(90vw,520px)}
+.chip{pointer-events:auto;cursor:pointer;font-family:var(--mono);font-size:.8rem;font-weight:600;
+  color:#fff;border:none;border-radius:999px;width:1.9rem;height:1.9rem;display:grid;place-items:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.25);opacity:1;transition:opacity .15s,transform .1s}
+.chip.off{opacity:.3}
+.chip:active{transform:scale(.9)}
+
+/* панель остановки */
+#panel{position:absolute;z-index:1001;right:0;top:0;bottom:0;width:min(92vw,380px);background:var(--surface);
+  border-left:1px solid var(--line);box-shadow:-4px 0 24px rgba(0,0,0,.18);transform:translateX(100%);
+  transition:transform .22s ease;display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+#panel.open{transform:none}
+#phead{padding:1rem 1.1rem .8rem;border-bottom:1px solid var(--line)}
+#pclose{float:right;border:none;background:none;font-size:1.4rem;color:var(--muted);cursor:pointer;line-height:1}
+#pname{font-size:1.3rem;font-weight:700;margin:0 1.5rem .4rem 0;letter-spacing:-.01em}
+#plines{display:flex;flex-wrap:wrap;gap:.3rem}
+.badge{font-family:var(--mono);font-size:.78rem;font-weight:700;color:#fff;border-radius:6px;padding:.1rem .45rem}
+#pmeta{font-size:.8rem;color:var(--muted);margin-top:.5rem}
+#deps{flex:1;overflow-y:auto;padding:.4rem 1.1rem 1.1rem}
+.dep{display:flex;align-items:center;gap:.7rem;padding:.55rem 0;border-bottom:1px solid var(--line)}
+.dep .t{font-family:var(--mono);font-weight:700;font-size:1rem;min-width:3.2rem;font-variant-numeric:tabular-nums}
+.dep .b{flex:1;min-width:0}
+.dep .to{font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dep .in{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.sec{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  margin:.9rem 0 .2rem;font-weight:600}
+.empty{color:var(--muted);padding:2rem 0;text-align:center;font-size:.9rem}
+.leaflet-popup-content{margin:.5rem .7rem;font-family:var(--font)}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="top">
+  <span id="brand">Mou</span>
+  <input id="search" type="search" placeholder="Поиск станции…" autocomplete="off">
+</div>
+<div id="lines"></div>
+
+<aside id="panel" aria-hidden="true">
+  <div id="phead">
+    <button id="pclose" aria-label="Закрыть">×</button>
+    <h2 id="pname"></h2>
+    <div id="plines"></div>
+    <div id="pmeta"></div>
+  </div>
+  <div id="deps"></div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const map = L.map('map', {zoomControl:true, attributionControl:true}).setView([39.47, -0.38], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom:19, attribution:'© OpenStreetMap'
+}).addTo(map);
+
+let STOPS=[], LINES=[], activeLines=new Set();
+const markers=new Map();     // stop id -> marker
+const shapeLayers=new Map(); // line -> L.layerGroup
+
+function nowHHMM(){const d=new Date();return d.toTimeString().slice(0,5);}
+function minsBetween(a,b){ // "HH:MM" -> minutes from a to b (b may be next day via >24h feed times)
+  const [ah,am]=a.split(':').map(Number),[bh,bm]=b.split(':').map(Number);
+  return (bh*60+bm)-(ah*60+am);
+}
+
+async function boot(){
+  [STOPS, LINES] = await Promise.all([
+    fetch('../data/stops.json').then(r=>r.json()),
+    fetch('../data/lines.json').then(r=>r.json()),
+  ]);
+  const lineInfo = Object.fromEntries(LINES.map(l=>[l.line,l]));
+  window.LINEINFO = lineInfo;
+
+  // трассы линий
+  LINES.forEach(l=>{
+    const g=L.layerGroup();
+    l.shapes.forEach(pts=>{
+      L.polyline(pts, {color:l.color, weight:4, opacity:.8}).addTo(g);
+    });
+    g.addTo(map); shapeLayers.set(l.line,g); activeLines.add(l.line);
+  });
+
+  // станции
+  STOPS.forEach(s=>{
+    const primary = s.lines[0] ? (lineInfo[s.lines[0]]?.color||'#555') : '#555';
+    const m=L.circleMarker([s.lat,s.lon], {
+      radius:6, weight:2, color:'#fff', fillColor:primary, fillOpacity:1
+    }).addTo(map);
+    m.on('click',()=>openStop(s));
+    m.bindTooltip(s.name,{direction:'top'});
+    markers.set(s.id,m);
+  });
+
+  buildChips(lineInfo);
+}
+
+function buildChips(info){
+  const box=document.getElementById('lines');
+  LINES.forEach(l=>{
+    const c=document.createElement('button');
+    c.className='chip'; c.textContent=l.line; c.style.background=l.color; c.style.color=l.text;
+    c.title=l.name;
+    c.onclick=()=>{
+      c.classList.toggle('off');
+      const on=!c.classList.contains('off');
+      on?activeLines.add(l.line):activeLines.delete(l.line);
+      shapeLayers.get(l.line)[on?'addTo':'remove'](map);
+      refreshMarkers();
+    };
+    box.appendChild(c);
+  });
+}
+function refreshMarkers(){
+  STOPS.forEach(s=>{
+    const vis=s.lines.some(l=>activeLines.has(l));
+    const m=markers.get(s.id);
+    if(vis){ if(!map.hasLayer(m)) m.addTo(map); } else { map.removeLayer(m); }
+  });
+}
+
+function openStop(s){
+  const info=window.LINEINFO;
+  document.getElementById('pname').textContent=s.name;
+  const pl=document.getElementById('plines'); pl.innerHTML='';
+  s.lines.forEach(l=>{
+    const b=document.createElement('span'); b.className='badge';
+    b.textContent=l; b.style.background=info[l]?.color||'#555'; b.style.color=info[l]?.text||'#fff';
+    pl.appendChild(b);
+  });
+  document.getElementById('pmeta').textContent =
+    `Зона ${s.zone||'—'} · ${s.lines.length} лин. · ${s.dep.length} отпр. сегодня`;
+
+  const now=nowHHMM();
+  const upcoming=s.dep.filter(d=>minsBetween(now,d.t)>=0).slice(0,40);
+  const deps=document.getElementById('deps'); deps.innerHTML='';
+  const sec=document.createElement('div'); sec.className='sec';
+  sec.textContent=`Ближайшие отправления · по расписанию`;
+  deps.appendChild(sec);
+  if(!upcoming.length){
+    const e=document.createElement('div'); e.className='empty';
+    e.textContent=s.dep.length? 'На сегодня отправления закончились' : 'Нет расписания на сегодня';
+    deps.appendChild(e);
+  }
+  upcoming.forEach(d=>{
+    const row=document.createElement('div'); row.className='dep';
+    const t=document.createElement('span'); t.className='t'; t.textContent=d.t;
+    const badge=document.createElement('span'); badge.className='badge';
+    badge.textContent=d.line; badge.style.background=d.color; badge.style.color=info[d.line]?.text||'#fff';
+    const b=document.createElement('div'); b.className='b';
+    const to=document.createElement('div'); to.className='to'; to.textContent=d.to||'—';
+    const mins=minsBetween(now,d.t);
+    const inn=document.createElement('div'); inn.className='in';
+    inn.textContent = mins===0?'сейчас':`через ${mins} мин`;
+    b.append(to,inn);
+    row.append(t,badge,b);
+    deps.appendChild(row);
+  });
+
+  const p=document.getElementById('panel'); p.classList.add('open'); p.setAttribute('aria-hidden','false');
+  map.panTo([s.lat,s.lon]);
+}
+document.getElementById('pclose').onclick=()=>{
+  const p=document.getElementById('panel'); p.classList.remove('open'); p.setAttribute('aria-hidden','true');
+};
+
+// поиск
+document.getElementById('search').addEventListener('input', e=>{
+  const q=e.target.value.trim().toLowerCase(); if(!q) return;
+  const hit=STOPS.find(s=>s.name.toLowerCase().includes(q));
+  if(hit){ map.setView([hit.lat,hit.lon],15); markers.get(hit.id)?.openTooltip(); }
+});
+document.getElementById('search').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){const q=e.target.value.trim().toLowerCase();
+    const hit=STOPS.find(s=>s.name.toLowerCase().includes(q)); if(hit) openStop(hit);}
+});
+
+boot();
+</script>
+</body>
+</html>

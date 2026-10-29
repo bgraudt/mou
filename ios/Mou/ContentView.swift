@@ -104,16 +104,18 @@ struct ContentView: View {
 
             VStack(spacing: 10) {
                 Spacer()
-                if !searchActive {
-                    HStack(alignment: .bottom) {
-                        leftButton
-                        Spacer()
-                        locateButton
+                if store.selectedStop == nil {          // при выбранной станции поиск убираем (его накрывает карточка)
+                    if !searchActive {
+                        HStack(alignment: .bottom) {
+                            leftButton
+                            Spacer()
+                            locateButton
+                        }
+                        .padding(.horizontal, ctrlMargin)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-                    .padding(.horizontal, ctrlMargin)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    searchPanel
                 }
-                searchPanel
             }
             .zIndex(2)
         }
@@ -393,7 +395,7 @@ struct ContentView: View {
 
     // линейка масштаба: вертикальная линия фиксированной длины (= две кнопки зума) + подпись
     private var scaleBar: some View {
-        let barLen: CGFloat = 114            // 52 + 10 + 52 = высота блока зума
+        let barLen: CGFloat = 96             // чуть короче блока зума
         let screenH = max(1, UIScreen.main.bounds.height)
         let metersPerPt = region.span.latitudeDelta * 111_000 / Double(screenH)
         let nice = niceNumber(Double(barLen) * metersPerPt)
@@ -401,7 +403,7 @@ struct ContentView: View {
             Rectangle().fill(ink).frame(width: 2, height: barLen)
                 .shadow(color: .white.opacity(0.9), radius: 1.5)
             Text(scaleLabel(nice))
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(ink)
                 .shadow(color: .white.opacity(0.9), radius: 1.5)
         }
@@ -416,7 +418,7 @@ struct ContentView: View {
     }
 
     private func scaleLabel(_ m: Double) -> String {
-        m >= 1000 ? "\(Int((m / 1000).rounded())) км" : "\(Int(m)) м"
+        m >= 1000 ? "\(Int((m / 1000).rounded())) km" : "\(Int(m)) m"
     }
 
     private var locateButton: some View {

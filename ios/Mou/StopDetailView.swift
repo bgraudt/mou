@@ -19,6 +19,7 @@ struct StopDetailView: View {
 
     private let accent = Color(hex: "#007AFF")
     private let ink = Color(.sRGB, red: 0.1, green: 0.1, blue: 0.12, opacity: 1)
+    private let routeBlue = Color(hex: "#0B1A4D")   // тёмно-тёмно-синий для «Ruta»
     private let phone = "900461046"
 
     var body: some View {
@@ -118,8 +119,8 @@ struct StopDetailView: View {
         guard let u = userLoc else { return nil }
         let d = CLLocation(latitude: u.latitude, longitude: u.longitude)
             .distance(from: CLLocation(latitude: stop.lat, longitude: stop.lon))
-        if d < 950 { return "a \(Int((d / 10).rounded()) * 10) m de tu" }
-        return String(format: "a %.1f km de tu", d / 1000).replacingOccurrences(of: ".", with: ",")
+        if d < 950 { return "\(Int((d / 10).rounded()) * 10) m" }
+        return String(format: "%.1f km", d / 1000).replacingOccurrences(of: ".", with: ",")
     }
 
     // MARK: вкладки
@@ -311,21 +312,19 @@ struct StopDetailView: View {
     // MARK: нижняя панель
 
     private var bottomBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Button { openDirections() } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                    Text("Ruta").font(.system(size: 17, weight: .semibold))
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity).frame(height: 50)
-                .background(accent, in: RoundedRectangle(cornerRadius: 14))
+                Text("Ruta").font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 30).frame(height: 46)
+                    .background(routeBlue, in: RoundedRectangle(cornerRadius: 20))
             }
             Button { call() } label: {
-                Image(systemName: "phone.fill").font(.system(size: 18)).foregroundStyle(accent)
-                    .frame(width: 54, height: 50)
-                    .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+                Image(systemName: "phone.fill").font(.system(size: 17)).foregroundStyle(routeBlue)
+                    .frame(width: 48, height: 46)
+                    .background(routeBlue.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
             }
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 6)
         .background(Color.white)

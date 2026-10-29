@@ -35,7 +35,7 @@ target.build_configurations.each do |config|
   bs['INFOPLIST_KEY_UILaunchScreen_Generation'] = 'YES'
   bs['INFOPLIST_KEY_CFBundleDisplayName'] = 'Mou'
   bs['INFOPLIST_KEY_UISupportedInterfaceOrientations'] = 'UIInterfaceOrientationPortrait'
-  bs['INFOPLIST_KEY_NSLocationWhenInUseUsageDescription'] = 'Чтобы показать вашу позицию на карте и ближайшие остановки.'
+  bs['INFOPLIST_KEY_NSLocationWhenInUseUsageDescription'] = 'Per a mostrar la teua posició al mapa i les parades més pròximes.'
   bs['SWIFT_VERSION'] = '5.0'
   bs['TARGETED_DEVICE_FAMILY'] = '1'
   bs['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'

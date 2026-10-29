@@ -479,7 +479,7 @@ struct ContentView: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 17, weight: .medium)).foregroundStyle(.secondary)
-            TextField("Поиск здесь", text: $store.query)
+            TextField("Cerca ací", text: $store.query)
                 .font(.system(size: 17)).foregroundStyle(ink).tint(accent)
                 .focused($searchFocused)
                 .submitLabel(.search)
@@ -523,9 +523,9 @@ struct ContentView: View {
                 }
                 Divider()
                 if store.query.trimmingCharacters(in: .whitespaces).isEmpty {
-                    hint("Начните вводить название станции")
+                    hint("Comença a escriure el nom de l'estació")
                 } else if store.searchResults.isEmpty {
-                    hint("Ничего не найдено")
+                    hint("No s'ha trobat res")
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {

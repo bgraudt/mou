@@ -67,9 +67,9 @@ struct StopDetailView: View {
 
     private var stationKind: String {
         let types = Set(stop.lines.compactMap { store.lineByID[$0]?.type })
-        if types == ["tram"] { return "Остановка трамвая" }
-        if types.contains("tram") && types.contains("metro") { return "Станция метро и трамвая" }
-        return "Станция метро"
+        if types == ["tram"] { return "Parada de tramvia" }
+        if types.contains("tram") && types.contains("metro") { return "Estació de metro i tramvia" }
+        return "Estació de metro"
     }
 
     // MARK: линии (иконка метро + бейдж + название ветки)
@@ -118,16 +118,16 @@ struct StopDetailView: View {
         guard let u = userLoc else { return nil }
         let d = CLLocation(latitude: u.latitude, longitude: u.longitude)
             .distance(from: CLLocation(latitude: stop.lat, longitude: stop.lon))
-        if d < 950 { return "\(Int((d / 10).rounded()) * 10) м от вас" }
-        return String(format: "%.1f км от вас", d / 1000).replacingOccurrences(of: ".", with: ",")
+        if d < 950 { return "a \(Int((d / 10).rounded()) * 10) m de tu" }
+        return String(format: "a %.1f km de tu", d / 1000).replacingOccurrences(of: ".", with: ",")
     }
 
     // MARK: вкладки
 
     private var tabsBar: some View {
         HStack(spacing: 26) {
-            tabButton("Обзор", .overview)
-            tabButton("Расписание", .schedule)
+            tabButton("Resum", .overview)
+            tabButton("Horari", .schedule)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 20)
@@ -166,8 +166,8 @@ struct StopDetailView: View {
                             }
                         } label: {
                             HStack(spacing: 4) {
-                                Text(expanded.contains(l) ? "Свернуть"
-                                     : "ещё \(gs.count - 1) \(plural(gs.count - 1))")
+                                Text(expanded.contains(l) ? "Replegar"
+                                     : "\(gs.count - 1) \(plural(gs.count - 1)) més")
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 11, weight: .semibold))
                                     .rotationEffect(.degrees(expanded.contains(l) ? 180 : 0))
@@ -181,7 +181,7 @@ struct StopDetailView: View {
                 }
             }
             if directionsEmpty {
-                Text("На сегодня отправления закончились")
+                Text("No queden més eixides per a hui")
                     .font(.system(size: 15)).foregroundStyle(.secondary)
                     .padding(.horizontal, 20).padding(.vertical, 16)
             }
@@ -205,11 +205,11 @@ struct StopDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(group.to).font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(ink).lineLimit(1)
-                Text(iv != nil ? "интервал ~\(iv!) мин" : "в \(next.t)")
+                Text(iv != nil ? "interval ~\(iv!) min" : "a les \(next.t)")
                     .font(.system(size: 13)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            Text(mins <= 0 ? "сейчас" : "через \(mins) мин")
+            Text(mins <= 0 ? "ara" : "d'ací a \(mins) min")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(mins <= 2 ? accent : ink)
         }
@@ -237,10 +237,7 @@ struct StopDetailView: View {
     private func isTram(_ line: String) -> Bool { store.lineByID[line]?.type == "tram" }
 
     private func plural(_ n: Int) -> String {
-        let n10 = n % 10, n100 = n % 100
-        if n10 == 1 && n100 != 11 { return "вариант" }
-        if (2...4).contains(n10) && !(12...14).contains(n100) { return "варианта" }
-        return "вариантов"
+        n == 1 ? "opció" : "opcions"
     }
 
     // MARK: адрес + контакт
@@ -248,9 +245,9 @@ struct StopDetailView: View {
     private var infoSection: some View {
         VStack(spacing: 0) {
             if let a = address {
-                infoRow(icon: "mappin.and.ellipse", title: a, sub: "Адрес")
+                infoRow(icon: "mappin.and.ellipse", title: a, sub: "Adreça")
             }
-            infoRow(icon: "phone", title: "900 46 10 46", sub: "Metrovalencia · справочная")
+            infoRow(icon: "phone", title: "900 46 10 46", sub: "Metrovalencia · informació")
         }
         .padding(.top, 8)
     }
@@ -279,7 +276,7 @@ struct StopDetailView: View {
             .sorted { $0.t < $1.t }
         return LazyVStack(spacing: 0) {
             if up.isEmpty {
-                Text(stop.dep.isEmpty ? "Нет расписания на сегодня" : "На сегодня отправления закончились")
+                Text(stop.dep.isEmpty ? "No hi ha horari per a hui" : "No queden més eixides per a hui")
                     .font(.system(size: 15)).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20).padding(.vertical, 16)
@@ -300,7 +297,7 @@ struct StopDetailView: View {
             lineBadge(d.line, size: 22, font: 12, radius: 5)
             VStack(alignment: .leading, spacing: 1) {
                 Text(d.to.isEmpty ? "—" : d.to).font(.system(size: 15)).foregroundStyle(ink).lineLimit(1)
-                Text(mins <= 0 ? "сейчас" : "через \(mins) мин")
+                Text(mins <= 0 ? "ara" : "d'ací a \(mins) min")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
@@ -318,7 +315,7 @@ struct StopDetailView: View {
             Button { openDirections() } label: {
                 HStack(spacing: 7) {
                     Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                    Text("Маршрут").font(.system(size: 17, weight: .semibold))
+                    Text("Ruta").font(.system(size: 17, weight: .semibold))
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity).frame(height: 50)
